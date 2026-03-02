@@ -1,0 +1,26 @@
+# config/ingestion.yaml
+# ---------------------
+# Controls FPL API ingestion behaviour.
+# All paths are relative to the project root.
+
+api:
+  base_url: "https://fantasy.premierleague.com/api"
+  timeout_seconds: 30
+  rate_limit_pause: 0.5        # seconds between player requests
+  retry_total: 5
+  retry_backoff_factor: 1.0
+  retry_status_forcelist: [429, 500, 502, 503, 504]
+
+paths:
+  raw_dir: "data/raw"
+  interim_dir: "data/interim"
+  processed_dir: "data/processed"
+
+ingestion:
+  save_raw: true
+  log_every_n_players: 50
+  skip_unavailable_players: true   # status == 'u'
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
