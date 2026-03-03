@@ -41,11 +41,12 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import rapidfuzz
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from io.understat_scraper import SEASON_MAP, scrape_league_players
-from io.understat_cache import fetch_league_with_cache
+from understat_scraper import SEASON_MAP, scrape_league_players
+from understat_cache import fetch_league_with_cache
 
 logging.basicConfig(
     level=logging.INFO,

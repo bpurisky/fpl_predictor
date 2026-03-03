@@ -15,10 +15,15 @@ import logging
 import sys
 from pathlib import Path
 
-# Allow running from project root
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+# Add src subdirectories directly — avoids conflict with Python's built-in 'io' module.
+# Importing `from io.fpl_api import ...` fails because Python sees its own built-in
+# 'io' module first. Fix: add src/io to the path so fpl_api is importable directly.
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT / "src" / "io"))
+sys.path.insert(0, str(_ROOT / "src" / "data"))
+sys.path.insert(0, str(_ROOT / "src"))
 
-from io.fpl_api import (
+from fpl_api import (
     fetch_bootstrap,
     fetch_fixtures,
     fetch_player_summary,

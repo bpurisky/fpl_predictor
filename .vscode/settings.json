@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./fpl-predictor/src/io"
+    ],
+    "python-envs.defaultEnvManager": "ms-python.python:system"
+}
