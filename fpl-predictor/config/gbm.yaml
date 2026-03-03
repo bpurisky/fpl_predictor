@@ -1,0 +1,44 @@
+# config/gbm.yaml
+# ----------------
+# Configuration for FPLGBMModel training.
+# All values match HistGradientBoostingRegressor parameters.
+#
+# TUNING NOTES:
+#   learning_rate + max_iter: lower lr needs more iters. 0.05/500 is safe start.
+#   max_depth: FPL data is relatively low-dimensional; 5-7 is usually optimal.
+#   min_samples_leaf: increase to reduce overfitting on small position subsets.
+#   l2_regularization: light regularisation works well here; 0.1 is conservative.
+#   max_features: subsampling features per split (like XGBoost colsample_bytree).
+#                 0.8 retains most signal; reduce to 0.6 if overfitting.
+
+gbm:
+  learning_rate: 0.05
+  max_iter: 500
+  max_depth: 6
+  min_samples_leaf: 20
+  l2_regularization: 0.1
+  max_features: 0.8
+  random_state: 42
+  calibrate: true
+  early_stopping: true
+  validation_fraction: 0.1      # internal split used by early stopping
+  n_iter_no_change: 20          # rounds without improvement before stopping
+  tol: 1.0e-4
+
+quantiles:
+  fit: true
+  levels: [0.10, 0.50, 0.90]   # P10 (floor), P50 (median), P90 (ceiling)
+
+training:
+  version: "v1"                 # must match dataset version tag
+  fit_quantiles: true
+  verbose: true
+
+paths:
+  processed_dir: "data/processed"
+  model_dir: "models/artifacts"
+  experiment_dir: "models/experiments"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
