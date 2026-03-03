@@ -44,7 +44,10 @@ import pandas as pd
 import understat
 import rapidfuzz
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT / "src" / "io"))
+sys.path.insert(0, str(_ROOT / "src" / "data"))
+sys.path.insert(0, str(_ROOT / "src"))
 
 from understat_scraper import SEASON_MAP, scrape_league_players
 from understat_cache import fetch_league_with_cache
@@ -58,7 +61,7 @@ logger = logging.getLogger(__name__)
 RAW_DIR = Path("data/raw")
 UNDERSTAT_DIR = RAW_DIR / "understat"
 MAPPING_OUTPUT = Path("data/understat_player_mapping_candidates.csv")
-BOOTSTRAP_CACHE = RAW_DIR / "bootstrap.json"
+BOOTSTRAP_CACHE = RAW_DIR / "bootstrap_latest.json"
 
 # Seasons to pull Understat players from
 TARGET_SEASONS = ["2022", "2023", "2024"]
@@ -70,7 +73,7 @@ def load_fpl_players() -> pd.DataFrame:
         raise FileNotFoundError(
             "Bootstrap cache not found. Run: python scripts/ingest.py --bootstrap-only"
         )
-    bootstrap = json.loads(BOOTSTRAP_CACHE.read_text())
+    bootstrap = json.loads(BOOTSTRAP_CACHE.read_text(encoding="utf-8"))
 
     teams = {t["id"]: t["name"] for t in bootstrap["teams"]}
 
