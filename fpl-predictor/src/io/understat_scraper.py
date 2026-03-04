@@ -116,25 +116,33 @@ def _fetch_html(
 def _extract_json_vars(html: str) -> dict[str, Any]:
     """
     Parse all JSON.parse('...') variable assignments from Understat HTML.
-
-    Understat escapes the JSON with unicode escapes (\x61 etc.) inside
-    single-quoted strings. We decode via:
-      1. raw_unicode_escape decode  → bytes
-      2. utf-8 decode               → proper string
-      3. json.loads                 → Python object
-
-    Returns dict mapping variable_name → parsed object.
+    Uses BeautifulSoup to find script tags, then extracts by string indexing.
     """
+    from bs4 import BeautifulSoup
+    
     result: dict[str, Any] = {}
-    for match in _JSON_SCRIPT_RE.finditer(html):
-        var_name = match.group(1)
-        raw_str = match.group(2)
+    soup = BeautifulSoup(html, "html.parser")
+    scripts = soup.find_all("script")
+    
+    for script in scripts:
+        if not script.string:
+            continue
+        text = script.string.strip()
+        if "JSON.parse('" not in text:
+            continue
+        # Extract variable name
+        if not text.startswith("var "):
+            continue
+        var_name = text.split(" ")[1]
         try:
-            # Understat uses \xNN hex escapes — decode them
-            decoded = raw_str.encode("raw_unicode_escape").decode("unicode_escape")
+            ind_start = text.index("('") + 2
+            ind_end = text.index("')")
+            json_str = text[ind_start:ind_end]
+            decoded = json_str.encode("utf-8").decode("unicode_escape")
             result[var_name] = json.loads(decoded)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             logger.warning("Failed to decode var '%s': %s", var_name, exc)
+    
     return result
 
 

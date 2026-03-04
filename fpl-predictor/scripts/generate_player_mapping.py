@@ -39,18 +39,15 @@ import json
 import logging
 import sys
 from pathlib import Path
-
 import pandas as pd
-import understat
 import rapidfuzz
+
 
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "src" / "io"))
 sys.path.insert(0, str(_ROOT / "src" / "data"))
 sys.path.insert(0, str(_ROOT / "src"))
 
-from understat_scraper import SEASON_MAP, scrape_league_players
-from understat_cache import fetch_league_with_cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -88,13 +85,13 @@ def load_fpl_players() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def load_understat_players(seasons: list[str]) -> pd.DataFrame:
-    """
-    Load combined player list from Understat for given seasons.
-    Deduplicates by understat_id (keeping most recent season entry).
-    """
-    all_players: list[dict] = []
+from understatapi import UnderstatClient
 
+def load_understat_players(seasons: list[str]) -> pd.DataFrame:
+    from understat_scraper import scrape_league_players
+    from understat_cache import fetch_league_with_cache
+
+    all_players = []
     for season_year in seasons:
         logger.info("Loading Understat season %s...", season_year)
         players = fetch_league_with_cache(
@@ -111,7 +108,6 @@ def load_understat_players(seasons: list[str]) -> pd.DataFrame:
             })
 
     df = pd.DataFrame(all_players)
-    # Keep most recent season's entry per player
     df = df.sort_values("season", ascending=False).drop_duplicates("understat_id")
     logger.info("Understat: %d unique players across %s", len(df), seasons)
     return df

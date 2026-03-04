@@ -94,6 +94,8 @@ scikit-learn
 pyarrow
 pytest>=8.0
 rapidfuzz       # optional — only needed for generate_player_mapping.py
+understat
+understatapi
 ```
 
 ---
