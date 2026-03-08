@@ -39,15 +39,16 @@ import json
 import logging
 import sys
 from pathlib import Path
-import pandas as pd
-import rapidfuzz
 
+import pandas as pd
 
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT / "src" / "io"))
 sys.path.insert(0, str(_ROOT / "src" / "data"))
 sys.path.insert(0, str(_ROOT / "src"))
 
+from understat_scraper import scrape_league_players
+from understat_cache import fetch_league_with_cache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,21 +60,17 @@ RAW_DIR = Path("data/raw")
 UNDERSTAT_DIR = RAW_DIR / "understat"
 MAPPING_OUTPUT = Path("data/understat_player_mapping_candidates.csv")
 BOOTSTRAP_CACHE = RAW_DIR / "bootstrap_latest.json"
-
-# Seasons to pull Understat players from
-TARGET_SEASONS = ["2022", "2023", "2024"]
+TARGET_SEASONS = [ "2023", "2024", "2025"]
 
 
 def load_fpl_players() -> pd.DataFrame:
-    """Load FPL player list from bootstrap cache."""
     if not BOOTSTRAP_CACHE.exists():
         raise FileNotFoundError(
-            "Bootstrap cache not found. Run: python scripts/ingest.py --bootstrap-only"
+            f"Bootstrap cache not found at {BOOTSTRAP_CACHE}. "
+            "Run: python scripts/ingest.py --bootstrap-only"
         )
     bootstrap = json.loads(BOOTSTRAP_CACHE.read_text(encoding="utf-8"))
-
     teams = {t["id"]: t["name"] for t in bootstrap["teams"]}
-
     rows = []
     for el in bootstrap["elements"]:
         rows.append({
@@ -85,12 +82,7 @@ def load_fpl_players() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-from understatapi import UnderstatClient
-
 def load_understat_players(seasons: list[str]) -> pd.DataFrame:
-    from understat_scraper import scrape_league_players
-    from understat_cache import fetch_league_with_cache
-
     all_players = []
     for season_year in seasons:
         logger.info("Loading Understat season %s...", season_year)
@@ -118,26 +110,16 @@ def fuzzy_match(
     understat_df: pd.DataFrame,
     score_cutoff: float = 70.0,
 ) -> pd.DataFrame:
-    """
-    Produce candidate matches using rapidfuzz token_sort_ratio.
-
-    For each FPL player, finds the best-matching Understat name.
-    Returns a DataFrame of all candidates above score_cutoff.
-
-    NOTE: This output is for HUMAN REVIEW only. Do not use programmatically.
-    """
     try:
         from rapidfuzz import process, fuzz
     except ImportError:
-        logger.error(
-            "rapidfuzz not installed. Run: pip install rapidfuzz"
-        )
+        logger.error("rapidfuzz not installed. Run: pip install rapidfuzz")
         raise
 
     understat_names = understat_df["understat_name"].tolist()
     understat_index = understat_df.reset_index(drop=True)
-
     rows = []
+
     for _, fpl_row in fpl_df.iterrows():
         result = process.extractOne(
             fpl_row["fpl_name"],
@@ -168,13 +150,11 @@ def fuzzy_match(
                 "understat_name": matched_name,
                 "understat_team": understat_row["understat_team"],
                 "match_score": round(score, 1),
-                "verified": score >= 95.0,  # auto-verify near-perfect matches
+                "verified": score >= 95.0,
                 "notes": "",
             })
 
-    df = pd.DataFrame(rows)
-    df = df.sort_values("match_score", ascending=False)
-    return df
+    return pd.DataFrame(rows).sort_values("match_score", ascending=False)
 
 
 def main() -> None:
@@ -191,23 +171,16 @@ def main() -> None:
     MAPPING_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     candidates.to_csv(MAPPING_OUTPUT, index=False)
 
-    # Summary
     auto_verified = candidates["verified"].sum()
     no_match = (candidates["match_score"] == 0).sum()
     needs_review = len(candidates) - auto_verified - no_match
 
     logger.info("=" * 50)
-    logger.info("Candidate file written to: %s", MAPPING_OUTPUT)
+    logger.info("Written to: %s", MAPPING_OUTPUT)
     logger.info("  Auto-verified (score >= 95): %d", auto_verified)
     logger.info("  Needs manual review:         %d", needs_review)
     logger.info("  No match found:              %d", no_match)
     logger.info("=" * 50)
-    logger.info(
-        "Next step: open %s, review all rows where verified=False,\n"
-        "           correct understat_id where wrong, then save as:\n"
-        "           data/understat_player_mapping.csv",
-        MAPPING_OUTPUT,
-    )
 
 
 if __name__ == "__main__":
